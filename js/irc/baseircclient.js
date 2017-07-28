@@ -22,7 +22,9 @@ qwebirc.irc.BaseIRCClient = new Class({
   initialize: function(options) {
     this.setOptions(options);
 
-    this.toIRCLower = qwebirc.irc.RFC1459toIRCLower;
+    this.ASCIIToIRCLowerChar = qwebirc.irc.RFC1459ToIRCLowerChar;
+    this.UnicodeToIRCLowerChar = qwebirc.irc.IdentityChar;
+    this.updateLower();
 
     this.nickname = this.options.nickname;
     this.lowerNickname = this.toIRCLower(this.nickname);    
@@ -44,6 +46,9 @@ qwebirc.irc.BaseIRCClient = new Class({
     this.disconnect = this.connection.disconnect.bind(this.connection);
 
     this.setupGenericErrors();
+  },
+  updateLower: function() {
+    this.toIRCLower = qwebirc.irc.getToIRCLower(this.ASCIIToIRCLowerChar, this.UnicodeToIRCLowerChar);
   },
   connect: function() {
     this.connection.connect.apply(this.connection);
@@ -88,12 +93,23 @@ qwebirc.irc.BaseIRCClient = new Class({
   supported: function(key, value) {
     if(key == "CASEMAPPING") {
       if(value == "ascii") {
-        this.toIRCLower = qwebirc.irc.ASCIItoIRCLower;
+        this.ASCIIToIRCLowerChar = qwebirc.irc.IdentityChar;
       } else if(value == "rfc1459") {
-        /* IGNORE */
+        this.ASCIIToIRCLowerChar = qwebirc.irc.RFC1459ToIRCLowerChar;
       } else {
-        /* TODO: warn */
+        /* TODO: rfc1459-strict, else warn */
       }
+      this.updateLower();
+      this.lowerNickname = this.toIRCLower(this.nickname);
+    } else if(key == "UNICODECASEFOLDING") {
+      if(value == "none") {
+        this.UnicodeToIRCLowerChar = qwebirc.irc.IdentityChar;
+      } else if(value == "default") {
+        this.UnicodeToIRCLowerChar = qwebirc.irc.UnicodeToIRCLowerChar;
+      } else {
+        /* TODO: warn? */
+      }
+      this.updateLower();
       this.lowerNickname = this.toIRCLower(this.nickname);
     } else if(key == "CHANMODES") {
       var smodes = value.split(",");
